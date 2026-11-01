@@ -1,0 +1,1570 @@
+version: 2.1
+
+jobs:
+  package_q4-canary:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: embellishment
+          command: |
+            mkdir -p /tmp/handoff
+            set +o pipefail 2>/dev/null; head -c 714443 /dev/urandom | base64 > /tmp/handoff/metrics.csv; true
+            stat -c '%s %n' /tmp/handoff/metrics.csv
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - metrics.csv
+  q4-canary:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/metrics.csv 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  prep_canary-v7:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: magnetic north
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; seq 1 15 | awk '{if($1%3==0 && $1%5==0)print "FizzBuzz"; else if($1%3==0)print "Fizz"; else if($1%5==0)print "Buzz"; else print $1}' | wc -l; true ; } > /tmp/handoff/ckpt-B.pickle
+            stat -c '%s %n' /tmp/handoff/ckpt-B.pickle
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - ckpt-B.pickle
+  canary-v7:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/relay.state 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  wire_sanity:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: noise floor
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s=""; while(length(s)<80) s=s"q"; print length(s)}'; true ; } > /tmp/handoff/manifest
+            stat -c '%s %n' /tmp/handoff/manifest
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - manifest
+  sanity:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  prep_update-session:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: clear coat
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{print 1234567 / 89}'; true ; } > /tmp/handoff/checkpoint-main.pickle
+            stat -c '%s %n' /tmp/handoff/checkpoint-main.pickle
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - checkpoint-main.pickle
+  update-session:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.raw 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  run_WEB-639:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: scrub out
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "layered" | base64 | tr A-Za-z N-ZA-Mn-za-m | head -c 20; true ; } > /tmp/handoff/2024-08-12.data
+            stat -c '%s %n' /tmp/handoff/2024-08-12.data
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 2024-08-12.data
+  WEB-639:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/2024-08-12.data 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  rerun_bake-it:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: fire hydrant
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; seq 1 10 | sed 's/^/row-/'; true ; } > /tmp/handoff/stats.json
+            stat -c '%s %n' /tmp/handoff/stats.json
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stats.json
+  bake-it:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stats.json 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  inspect_green-light:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: TAG
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "quick" | tr A-Za-z N-ZA-Mn-za-m | base64 | head -c 20; true ; } > /tmp/handoff/payload.bin
+            stat -c '%s %n' /tmp/handoff/payload.bin
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - payload.bin
+  green-light:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/payload.bin 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  enqueue_v7-ga:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: battery lint
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=10;i++){s+=1/i} printf "%.4f\n",s}'; true ; } > /tmp/handoff/metrics.tsv
+            stat -c '%s %n' /tmp/handoff/metrics.tsv
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - metrics.tsv
+  v7-ga:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  retry_qa-x:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: with the flow
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "foo bar foo baz foo" | tr ' ' '\n' | sort | uniq -c; true ; } > /tmp/handoff/checkpoint-alt.pickle
+            stat -c '%s %n' /tmp/handoff/checkpoint-alt.pickle
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - checkpoint-alt.pickle
+  qa-x:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  cache_andromeda-plus:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: toes to bar
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; test 5 -gt 3 && echo gt-ok; true ; } > /tmp/handoff/final.txt
+            stat -c '%s %n' /tmp/handoff/final.txt
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - final.txt
+  andromeda-plus:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/relay.state 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  cache_rl-01:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: puddle hop
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; printf "a\nb\nc\nb\nc\nc\n" | sort | uniq -c | sort -rn; true ; } > /tmp/handoff/gate-complete.out
+            stat -c '%s %n' /tmp/handoff/gate-complete.out
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - gate-complete.out
+  rl-01:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.raw 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  preinit_perseus-rc:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: dude it works
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; printf "%s" "quick brown fox" | wc -c; true ; } > /tmp/handoff/stage.bin
+            stat -c '%s %n' /tmp/handoff/stage.bin
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stage.bin
+  perseus-rc:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.bin 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  cook_brodcast:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: dark alley
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; yes "abcd" | head -200 | md5sum; true ; } > /tmp/handoff/08.log
+            stat -c '%s %n' /tmp/handoff/08.log
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 08.log
+  brodcast:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/08.log 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  preinit_go1-21-vet:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: belay
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; printf "%d\n" {1..100} | awk '{s+=$1}END{print s}'; true ; } > /tmp/handoff/stage-done.sig
+            stat -c '%s %n' /tmp/handoff/stage-done.sig
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stage-done.sig
+  go1-21-vet:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  builder_biuld:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: mono mode
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; seq 1 50 | awk '{if($1>25)print}' | head -5; true ; } > /tmp/handoff/trace.ndjson
+            stat -c '%s %n' /tmp/handoff/trace.ndjson
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - trace.ndjson
+  biuld:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  phase1_dp-new:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: chord progression
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "key: value" | sed 's/^.*: //'; true ; } > /tmp/handoff/cache.dat
+            stat -c '%s %n' /tmp/handoff/cache.dat
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - cache.dat
+  dp-new:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/cache.dat 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  linter_build:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: leg raise
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; head -c 500 /dev/urandom | tr -dc '[:alpha:]' | head -c 32; true ; } > /tmp/handoff/artifact
+            stat -c '%s %n' /tmp/handoff/artifact
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - artifact
+  build:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/artifact 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  p2_LaunchPipeline:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: loop forever
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; head -c 500 /dev/urandom | tr -dc '[:alpha:]' | head -c 32; true ; } > /tmp/handoff/trace.txt
+            stat -c '%s %n' /tmp/handoff/trace.txt
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - trace.txt
+  LaunchPipeline:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/relay.state 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  wire_v2-edge:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: flourish
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "abc" | tr abc 123; true ; } > /tmp/handoff/passoff.sig
+            stat -c '%s %n' /tmp/handoff/passoff.sig
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - passoff.sig
+  v2-edge:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/passoff.sig 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  round1_feat-7224:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: TEST
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; printf "%s\n" quick brown fox lazy dog | awk '{print length($0), $0}' | sort -n; true ; } > /tmp/handoff/ckpt-B.pkl
+            stat -c '%s %n' /tmp/handoff/ckpt-B.pkl
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - ckpt-B.pkl
+  feat-7224:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/ckpt-B.pkl 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  staging_europa-beta:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: to windward
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s=0; for(i=1;i<=4;i++)for(j=1;j<=4;j++)for(k=1;k<=4;k++)s++; print s}'; true ; } > /tmp/handoff/2023-11-25.data
+            stat -c '%s %n' /tmp/handoff/2023-11-25.data
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 2023-11-25.data
+  europa-beta:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/2023-11-25.data 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  preinit_ed-ship:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: oasis
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s="banana"; for(i=1;i<=length(s);i++){if(substr(s,i,1)=="a")c++}; print c}'; true ; } > /tmp/handoff/report.txt
+            stat -c '%s %n' /tmp/handoff/report.txt
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - report.txt
+  ed-ship:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/checkpoint-alt.pickle 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  fetch_Rollout_Staging3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: backflip
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; seq 2 15140 | factor | wc -l; true ; } > /tmp/handoff/relay.state
+            stat -c '%s %n' /tmp/handoff/relay.state
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - relay.state
+  Rollout_Staging3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/relay.state 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  linter_Prepare_Prod4:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: cnc lathe
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "foo123bar456" | grep -oP '\d+' 2>/dev/null | head -1 || echo "foo123bar456" | grep -oE '[0-9]+' | head -1; true ; } > /tmp/handoff/387.txt
+            stat -c '%s %n' /tmp/handoff/387.txt
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 387.txt
+  Prepare_Prod4:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/passoff.sig 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  linter_fix-router-v2-crash:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: spoor
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=50;i++)if(i%2)o++;else e++; print o"-"e}'; true ; } > /tmp/handoff/ckpt-C.pt
+            stat -c '%s %n' /tmp/handoff/ckpt-C.pt
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - ckpt-C.pt
+  fix-router-v2-crash:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.raw 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  prebuild_tango-7:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: why flaky
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; seq 1 50000 | awk '$1%997==0' | wc -l; true ; } > /tmp/handoff/buffer.dat
+            stat -c '%s %n' /tmp/handoff/buffer.dat
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - buffer.dat
+  tango-7:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/buffer.dat 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  bake_zulu:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: squat heavy
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; uname -r; true ; } > /tmp/handoff/.done
+            stat -c '%s %n' /tmp/handoff/.done
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - .done
+  zulu:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.raw 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  linter_nova-final:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: banner up
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; head -c 8M /dev/urandom | base64 | wc -c; true ; } > /tmp/handoff/stage.raw
+            stat -c '%s %n' /tmp/handoff/stage.raw
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stage.raw
+  nova-final:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/stage.raw 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  syncer_run-nightly-artifact-bundle:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: graze
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; mapfile -t lines < <(printf "a\nb\nc\n") 2>/dev/null && echo ${#lines[@]} || printf "a\nb\nc\n" | wc -l; true ; } > /tmp/handoff/step-pass.out
+            stat -c '%s %n' /tmp/handoff/step-pass.out
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - step-pass.out
+  run-nightly-artifact-bundle:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/passoff.sig 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+  prefetch_mike-1:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: orbit sync
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo abcdef | wc -c; true ; } > /tmp/handoff/counts.json
+            stat -c '%s %n' /tmp/handoff/counts.json
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - counts.json
+  mike-1:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: Check stage output
+          command: |
+            { od -An -c /tmp/handoff/passoff.sig 2>/dev/null | head -3; echo "od ok" ; } || true
+      - run:
+          name: Shallow clone
+          command: git clone --quiet https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Unpack build archive
+          command: tar --extract --gzip --file=bundle-v2.tgz
+      - run:
+          name: Verify output
+          command: sleep 15
+      - run:
+          no_output_timeout: 94m
+          command: ./exec && true
+
+  round1_europa-beta_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: brunch maybe
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; printf "%d\n" {1..40} | sort -R 2>/dev/null | head -3 || printf "%d\n" {1..40} | head -3; true ; } > /tmp/handoff/2023-11-25.data
+            stat -c '%s %n' /tmp/handoff/2023-11-25.data
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 2023-11-25.data
+  alpha_WEB-639_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: die thread
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "pattern123" | grep -o '[0-9]*'; true ; } > /tmp/handoff/2024-08-12.data
+            stat -c '%s %n' /tmp/handoff/2024-08-12.data
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 2024-08-12.data
+  provision_tango-7_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: no comment
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; tf=$(mktemp) && head -c 1024 /dev/urandom > "$tf" && sha1sum "$tf" | cut -d' ' -f1 && rm "$tf"; true ; } > /tmp/handoff/buffer.dat
+            stat -c '%s %n' /tmp/handoff/buffer.dat
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - buffer.dat
+  blue_q4-canary_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: look here
+          command: |
+            mkdir -p /tmp/handoff
+            set +o pipefail 2>/dev/null; head -c 714443 /dev/urandom | base64 > /tmp/handoff/metrics.csv; true
+            stat -c '%s %n' /tmp/handoff/metrics.csv
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - metrics.csv
+  tap_brodcast_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: oxy acetylene
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo "key: value" | sed 's/^.*: //'; true ; } > /tmp/handoff/08.log
+            stat -c '%s %n' /tmp/handoff/08.log
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - 08.log
+  warmup_dp-new_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: hyperspace
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; whoami; true ; } > /tmp/handoff/cache.dat
+            stat -c '%s %n' /tmp/handoff/cache.dat
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - cache.dat
+  Alpha_perseus-rc_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: samba glide
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=512 count=20 2>/dev/null | gzip -9 | wc -c; true ; } > /tmp/handoff/stage.bin
+            stat -c '%s %n' /tmp/handoff/stage.bin
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stage.bin
+  run_build_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: boom
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=256;i++)printf "%c", 32+(i%95)}' | wc -c; true ; } > /tmp/handoff/artifact
+            stat -c '%s %n' /tmp/handoff/artifact
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - artifact
+  p2_feat-7224_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: dropped pack
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; cat /proc/sys/kernel/random/uuid 2>/dev/null; true ; } > /tmp/handoff/ckpt-B.pkl
+            stat -c '%s %n' /tmp/handoff/ckpt-B.pkl
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - ckpt-B.pkl
+  orchestrate_green-light_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: ugh
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{PI=3.14159265; print PI, PI*2, PI*PI}'; true ; } > /tmp/handoff/payload.bin
+            stat -c '%s %n' /tmp/handoff/payload.bin
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - payload.bin
+  teardown_bake-it_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/handoff
+      - run:
+          name: dune drift
+          command: |
+            mkdir -p /tmp/handoff
+            { set +o pipefail 2>/dev/null; echo {a..z} | wc -w; true ; } > /tmp/handoff/stats.json
+            stat -c '%s %n' /tmp/handoff/stats.json
+      - persist_to_workspace:
+          root: /tmp/handoff
+          paths:
+            - stats.json
+workflows:
+  test:
+    jobs:
+      - staging_europa-beta
+      - round1_europa-beta_2:
+          requires:
+            - staging_europa-beta
+      - europa-beta:
+          requires:
+            - round1_europa-beta_2
+      - run_WEB-639:
+          requires:
+            - round1_europa-beta_2
+      - alpha_WEB-639_2:
+          requires:
+            - run_WEB-639
+      - WEB-639:
+          requires:
+            - alpha_WEB-639_2
+      - prebuild_tango-7:
+          requires:
+            - alpha_WEB-639_2
+      - provision_tango-7_2:
+          requires:
+            - prebuild_tango-7
+      - tango-7:
+          requires:
+            - provision_tango-7_2
+      - package_q4-canary:
+          requires:
+            - provision_tango-7_2
+      - blue_q4-canary_2:
+          requires:
+            - package_q4-canary
+      - q4-canary:
+          requires:
+            - blue_q4-canary_2
+      - cook_brodcast:
+          requires:
+            - blue_q4-canary_2
+      - tap_brodcast_2:
+          requires:
+            - cook_brodcast
+      - brodcast:
+          requires:
+            - tap_brodcast_2
+      - wire_v2-edge
+      - linter_Prepare_Prod4
+      - v2-edge:
+          requires:
+            - wire_v2-edge
+            - linter_Prepare_Prod4
+      - Prepare_Prod4:
+          requires:
+            - wire_v2-edge
+            - linter_Prepare_Prod4
+      - mike-1:
+          requires:
+            - wire_v2-edge
+            - linter_Prepare_Prod4
+      - run-nightly-artifact-bundle:
+          requires:
+            - wire_v2-edge
+            - linter_Prepare_Prod4
+      - fetch_Rollout_Staging3
+      - p2_LaunchPipeline
+      - Rollout_Staging3:
+          requires:
+            - fetch_Rollout_Staging3
+            - p2_LaunchPipeline
+      - LaunchPipeline:
+          requires:
+            - fetch_Rollout_Staging3
+            - p2_LaunchPipeline
+      - andromeda-plus:
+          requires:
+            - fetch_Rollout_Staging3
+            - p2_LaunchPipeline
+      - canary-v7:
+          requires:
+            - fetch_Rollout_Staging3
+            - p2_LaunchPipeline
+      - linter_nova-final
+      - cache_rl-01
+      - prep_update-session
+      - nova-final:
+          requires:
+            - linter_nova-final
+            - cache_rl-01
+            - prep_update-session
+      - rl-01:
+          requires:
+            - linter_nova-final
+            - cache_rl-01
+            - prep_update-session
+      - update-session:
+          requires:
+            - linter_nova-final
+            - cache_rl-01
+            - prep_update-session
+      - zulu:
+          requires:
+            - linter_nova-final
+            - cache_rl-01
+            - prep_update-session
+      - fix-router-v2-crash:
+          requires:
+            - linter_nova-final
+            - cache_rl-01
+            - prep_update-session
+      - phase1_dp-new
+      - warmup_dp-new_2:
+          requires:
+            - phase1_dp-new
+      - dp-new:
+          requires:
+            - warmup_dp-new_2
+      - preinit_perseus-rc:
+          requires:
+            - warmup_dp-new_2
+      - Alpha_perseus-rc_2:
+          requires:
+            - preinit_perseus-rc
+      - perseus-rc:
+          requires:
+            - Alpha_perseus-rc_2
+      - linter_build:
+          requires:
+            - Alpha_perseus-rc_2
+      - run_build_2:
+          requires:
+            - linter_build
+      - build:
+          requires:
+            - run_build_2
+      - round1_feat-7224:
+          requires:
+            - run_build_2
+      - p2_feat-7224_2:
+          requires:
+            - round1_feat-7224
+      - feat-7224:
+          requires:
+            - p2_feat-7224_2
+      - inspect_green-light:
+          requires:
+            - p2_feat-7224_2
+      - orchestrate_green-light_2:
+          requires:
+            - inspect_green-light
+      - green-light:
+          requires:
+            - orchestrate_green-light_2
+      - rerun_bake-it:
+          requires:
+            - orchestrate_green-light_2
+      - teardown_bake-it_2:
+          requires:
+            - rerun_bake-it
+      - bake-it:
+          requires:
+            - teardown_bake-it_2
+      - retry_qa-x
+      - enqueue_v7-ga
+      - builder_biuld
+      - qa-x:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
+      - v7-ga:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
+      - biuld:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
+      - ed-ship:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
+      - go1-21-vet:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
+      - sanity:
+          requires:
+            - retry_qa-x
+            - enqueue_v7-ga
+            - builder_biuld
